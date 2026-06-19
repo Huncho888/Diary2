@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Meu Diário"/>
+<meta name="theme-color" content="#08080F"/>
+<title>Meu Diário</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#08080F;color:#E0E0F0;font-family:'DM Sans',system-ui,sans-serif}
+::-webkit-scrollbar{display:none}
+button{cursor:pointer;font-family:inherit}
+textarea{font-family:inherit;resize:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+#app{max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:40px}
+
+/* TOPBAR */
+#topbar{padding:calc(env(safe-area-inset-top,0px) + 20px) 20px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #111120}
+#top-label{font-size:10px;font-weight:700;letter-spacing:2px;color:#333;font-family:'DM Mono',monospace;margin-bottom:4px}
+#top-date{font-size:16px;font-weight:600;color:#fff;text-transform:capitalize}
+#ring-svg circle.track{stroke:#1e1e2e;stroke-width:4;fill:none}
+#ring-svg circle.prog{stroke:#C084FC;stroke-width:4;fill:none;stroke-linecap:round;transform-origin:28px 28px;transform:rotate(-90deg);transition:stroke-dasharray .4s}
+#ring-pct{font-size:11px;font-family:'DM Mono',monospace;fill:#fff}
+
+/* NAV */
+#nav{display:flex;border-bottom:1px solid #111120;padding:0 12px}
+.nb{background:none;border:none;border-bottom:2px solid transparent;color:#444;font-size:13px;font-weight:600;padding:12px 14px;transition:all .2s}
+.nb.on{color:#fff;border-bottom-color:#C084FC}
+
+/* VIEWS — só uma aparece por vez */
+.view{display:none}
+.view.on{display:block;animation:fadeUp .25s ease}
+
+/* HOJE */
+#mood-row{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #111120;background:#0b0b14}
+#mood-row span{font-size:12px;color:#444}
+#mood-btns{display:flex;gap:5px}
+.mb{background:#1a1a2a;border:1.5px solid #2a2a3a;border-radius:10px;font-size:20px;padding:4px 7px;transition:all .15s;line-height:1}
+#mood-label{padding:5px 20px;font-size:12px;font-weight:600;border-bottom:1px solid #111120;background:#0a0a12;min-height:28px}
+#area-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}
+.ac{background:#111118;border:1.5px solid #1e1e2e;border-radius:12px;padding:10px 4px;text-align:center;transition:all .2s}
+.ac-icon{font-size:18px;font-family:'DM Mono',monospace}
+.ac-name{font-size:10px;font-weight:600;letter-spacing:.4px;margin-top:3px;color:#555}
+.ac-cnt{font-size:10px;color:#2a2a3a;margin-top:1px}
+#ph{display:flex;align-items:center;gap:8px;padding:10px 16px 10px 13px;border-left:3px solid #C084FC;margin:4px 16px 8px}
+#ph-icon{font-size:16px;font-family:'DM Mono',monospace}
+#ph-label{font-weight:600;font-size:13px}
+#fields{padding:0 16px}
+.fld{margin-bottom:12px}
+.fq{font-size:12px;color:#555;margin-bottom:5px;line-height:1.4}
+.fta{width:100%;background:#0e0e1a;border:1.5px solid #1a1a2a;border-radius:10px;color:#ddd;font-size:14px;padding:9px 11px;line-height:1.5;outline:none}
+.fta:focus{border-color:#C084FC}
+#save-btn{display:block;margin:16px 16px 0;width:calc(100% - 32px);background:#C084FC;border:none;border-radius:12px;color:#08080F;font-size:15px;font-weight:700;padding:13px;transition:background .3s}
+
+/* SEMANA */
+#semana-view{padding:14px;flex-direction:column;gap:12px}
+#semana-view.on{display:flex}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tc{background:#0e0e18;border:1px solid #1a1a28;border-radius:12px;padding:12px 8px;text-align:center}
+.tv{font-size:20px;font-weight:800;color:#fff;line-height:1}
+.ts{font-size:11px;color:#333;font-weight:400}
+.tl{font-size:9px;color:#444;margin-top:4px;letter-spacing:.5px;text-transform:uppercase}
+.card{background:#0e0e18;border:1px solid #1a1a28;border-radius:14px;padding:14px}
+.ct{font-size:11px;font-weight:700;color:#555;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;font-family:'DM Mono',monospace}
+.ch{height:130px;position:relative}
+.fs{display:flex;gap:16px;margin-bottom:10px;font-size:12px}
+#ai-wrap{display:flex;flex-direction:column;gap:8px}
+#ai-btn{background:#C084FC;border:none;border-radius:10px;color:#08080F;font-size:13px;font-weight:700;padding:9px 16px;align-self:flex-start}
+#ai-spin-wrap{display:none;align-items:center;gap:8px;color:#555;font-size:13px}
+#ai-spin{width:15px;height:15px;border:2px solid #222;border-top-color:#C084FC;border-radius:50%;animation:spin .7s linear infinite}
+#ai-text{display:none;font-size:13px;color:#C8C8D8;line-height:1.7;white-space:pre-wrap}
+#ai-retry{display:none;background:none;border:1px solid #2a2a3a;border-radius:8px;color:#555;font-size:11px;padding:5px 12px;align-self:flex-start}
+
+/* HISTÓRICO */
+#historico-view{padding:14px}
+#hist-empty{color:#333;text-align:center;padding-top:60px;font-size:14px;line-height:2}
+#hist-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.hc{background:#0e0e18;border:1px solid #1a1a28;border-radius:14px;padding:14px}
+.ht{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.hl{display:flex;align-items:center;gap:6px}
+.hdate{font-weight:600;font-size:14px;color:#fff}
+.hdow{font-size:11px;color:#444}
+.hpct{font-size:11px;color:#C084FC;font-family:'DM Mono',monospace;background:#1a0a2e;padding:2px 7px;border-radius:6px}
+.ha{margin-bottom:8px}
+.halbl{font-size:10px;font-weight:700;letter-spacing:.7px;margin-bottom:3px;font-family:'DM Mono',monospace}
+.hrow{display:flex;gap:5px;font-size:12px;line-height:1.5;margin-bottom:1px}
+.hq{color:#333;flex-shrink:0}
+.hv{color:#aaa}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div>
+      <div id="top-label">MEU DIÁRIO</div>
+      <div id="top-date"></div>
+    </div>
+    <svg id="ring-svg" width="52" height="52">
+      <circle class="track" cx="26" cy="26" r="20"/>
+      <circle class="prog" id="ring-prog" cx="26" cy="26" r="20" stroke-dasharray="0 125.6"/>
+      <text id="ring-pct" x="26" y="30" text-anchor="middle">0%</text>
+    </svg>
+  </div>
+
+  <div id="nav">
+    <button class="nb on" data-v="hoje">Hoje</button>
+    <button class="nb" data-v="semana">Semana</button>
+    <button class="nb" data-v="historico">Histórico</button>
+  </div>
+
+  <!-- HOJE -->
+  <div id="hoje-view" class="view on">
+    <div id="mood-row">
+      <span>Como você está?</span>
+      <div id="mood-btns"></div>
+    </div>
+    <div id="mood-label"></div>
+    <div id="area-grid"></div>
+    <div id="ph"><span id="ph-icon"></span><span id="ph-label"></span></div>
+    <div id="fields"></div>
+    <button id="save-btn">Salvar</button>
+  </div>
+
+  <!-- SEMANA -->
+  <div id="semana-view" class="view">
+    <div class="trio">
+      <div class="tc"><div class="tv" id="w-days">—</div><div class="tl">dias</div></div>
+      <div class="tc"><div class="tv" id="w-mood">—</div><div class="tl">humor médio</div></div>
+      <div class="tc" id="w-sc"><div class="tv" id="w-saldo">—</div><div class="tl">saldo</div></div>
+    </div>
+    <div class="card">
+      <div class="ct">Curva de humor</div>
+      <div class="ch"><canvas id="mood-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Fluxo financeiro</div>
+      <div class="fs">
+        <span><b id="fi-in" style="color:#34D399">+R$0</b> <span style="color:#444">entrou</span></span>
+        <span><b id="fi-out" style="color:#EF4444">-R$0</b> <span style="color:#444">saiu</span></span>
+      </div>
+      <div class="ch"><canvas id="fin-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">✦ Análise da semana</div>
+      <div id="ai-wrap">
+        <div style="font-size:12px;color:#444;line-height:1.6">A IA analisa seus registros e devolve um padrão real.</div>
+        <button id="ai-btn">Analisar minha semana</button>
+        <div id="ai-spin-wrap"><div id="ai-spin"></div><span>analisando...</span></div>
+        <div id="ai-text"></div>
+        <button id="ai-retry">Gerar de novo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div id="historico-view" class="view">
+    <div id="hist-empty"></div>
+    <div id="hist-list"></div>
+  </div>
+
+</div>
+<script>
+// ── CONSTANTES ────────────────────────────────────────────────────────
+const AREAS=[
+  {id:"mental",     icon:"◎",label:"Mental",     color:"#C084FC"},
+  {id:"financeiro", icon:"◈",label:"Financeiro", color:"#34D399"},
+  {id:"familia",    icon:"◉",label:"Família",    color:"#FB923C"},
+  {id:"pessoal",    icon:"◐",label:"Pessoal",    color:"#60A5FA"},
+];
+const PROMPTS={
+  mental:    ["Em uma palavra, você hoje é...","O que não sai da cabeça?","O que quer largar hoje?"],
+  financeiro:["Quanto saiu hoje? R$","Quanto entrou hoje? R$","Decisão financeira da semana:"],
+  familia:   ["Momento marcante com alguém:","O que melhorar nos seus vínculos?","Quem merece sua atenção?"],
+  pessoal:   ["Sua maior vitória hoje:","O que aprendeu?","O que mais importa amanhã?"],
+};
+const MOODS=[
+  {e:"😶",l:"Anestesiado",c:"#6B7280"},
+  {e:"😔",l:"Pesado",     c:"#EF4444"},
+  {e:"😐",l:"Neutro",     c:"#F59E0B"},
+  {e:"🙂",l:"Ok",         c:"#34D399"},
+  {e:"🔥",l:"Aceso",      c:"#C084FC"},
+];
+const WDAYS=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function todayKey(){return new Date().toISOString().split("T")[0];}
+function fmtDate(k){const[,m,d]=k.split("-");return `${d}/${m}`;}
+function weekKeys(){
+  return Array.from({length:7},(_,i)=>{
+    const d=new Date();d.setDate(d.getDate()-(6-i));
+    return d.toISOString().split("T")[0];
+  });
+}
+function toNum(v){const n=parseFloat((v||"").replace(",",".").replace(/[^\d.]/g,""));return isNaN(n)?0:n;}
+
+// ── ESTADO ────────────────────────────────────────────────────────────
+let entries={}, moods={}, todayMood=null, curArea="mental";
+let mChart=null, fChart=null;
+
+// ── STORAGE ───────────────────────────────────────────────────────────
+function load(){
+
+
+}
+function persist(){
+  localStorage.setItem("dj_e",JSON.stringify(entries));
+  localStorage.setItem("dj_m",JSON.stringify(moods));
+}
+load();
+
+// ── DATA/HORA ─────────────────────────────────────────────────────────
+const dn=new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"});
+document.getElementById("top-date").textContent=dn[0].toUpperCase()+dn.slice(1);
+
+// ── NAV ───────────────────────────────────────────────────────────────
+document.querySelectorAll(".nb").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const v=btn.dataset.v;
+    document.querySelectorAll(".nb").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+    document.getElementById(v+"-view").classList.add("on");
+    if(v==="semana")buildWeek();
+    if(v==="historico")buildHist();
+  });
+});
+
+// ── MOOD ──────────────────────────────────────────────────────────────
+const moodBtnsEl=document.getElementById("mood-btns");
+MOODS.forEach((m,i)=>{
+  const b=document.createElement("button");
+  b.className="mb";b.textContent=m.e;
+  b.addEventListener("click",()=>{
+    todayMood=i;moods[todayKey()]=i;persist();drawMood();
+  });
+  moodBtnsEl.appendChild(b);
+});
+function drawMood(){
+  document.querySelectorAll(".mb").forEach((b,i)=>{
+    const on=i===todayMood;
+    b.style.borderColor=on?MOODS[i].c:"#2a2a3a";
+    b.style.background=on?MOODS[i].c+"22":"#1a1a2a";
+    b.style.transform=on?"scale(1.2)":"scale(1)";
+  });
+  const lbl=document.getElementById("mood-label");
+  lbl.innerHTML=todayMood!=null?`<span style="color:${MOODS[todayMood].c}">${MOODS[todayMood].e} ${MOODS[todayMood].l}</span>`:"";
+}
+drawMood();
+
+// ── ÁREA GRID ─────────────────────────────────────────────────────────
+function drawGrid(){
+  const grid=document.getElementById("area-grid");
+  grid.innerHTML="";
+  AREAS.forEach(a=>{
+    const e=entries[todayKey()]?.[a.id]||{};
+    const done=PROMPTS[a.id].filter((_,i)=>e[i]?.trim()).length;
+    const on=a.id===curArea;
+    const btn=document.createElement("button");
+    btn.className="ac";
+    btn.style.borderColor=on?a.color:"#1e1e2e";
+    btn.style.background=on?a.color+"18":"#111118";
+    btn.innerHTML=`<div class="ac-icon" style="color:${on?a.color:"#333"}">${a.icon}</div>
+      <div class="ac-name" style="color:${on?a.color:"#555"}">${a.label.toUpperCase()}</div>
+      <div class="ac-cnt" style="color:${done>0?"#555":"#2a2a3a"}">${done}/${PROMPTS[a.id].length}</div>`;
+    btn.addEventListener("click",()=>{curArea=a.id;drawGrid();drawFields();});
+    grid.appendChild(btn);
+  });
+}
+
+// ── FIELDS ────────────────────────────────────────────────────────────
+function drawFields(){
+  const a=AREAS.find(x=>x.id===curArea);
+  document.getElementById("ph-icon").textContent=a.icon;
+  document.getElementById("ph-icon").style.color=a.color;
+  document.getElementById("ph-label").textContent=a.label;
+  document.getElementById("ph").style.borderLeftColor=a.color;
+  const e=entries[todayKey()]?.[a.id]||{};
+  const wrap=document.getElementById("fields");
+  wrap.innerHTML="";
+  PROMPTS[a.id].forEach((q,i)=>{
+    const div=document.createElement("div");div.className="fld";
+    const lbl=document.createElement("div");lbl.className="fq";lbl.textContent=q;
+    const ta=document.createElement("textarea");ta.className="fta";ta.rows=2;ta.placeholder="→";
+    ta.value=e[i]||"";
+    ta.addEventListener("focus",()=>ta.style.borderColor=a.color);
+    ta.addEventListener("blur",()=>ta.style.borderColor="#1a1a2a");
+    ta.addEventListener("input",()=>{
+      const t=todayKey();
+      if(!entries[t])entries[t]={};
+      if(!entries[t][a.id])entries[t][a.id]={};
+      entries[t][a.id][i]=ta.value;
+      drawGrid();drawRing();
+    });
+    div.appendChild(lbl);div.appendChild(ta);wrap.appendChild(div);
+  });
+}
+
+// ── SALVAR ────────────────────────────────────────────────────────────
+document.getElementById("save-btn").addEventListener("click",()=>{
+  persist();
+  const b=document.getElementById("save-btn");
+  b.textContent="✓ Salvo!";b.style.background="#34D399";
+  setTimeout(()=>{b.textContent="Salvar";b.style.background="#C084FC";},1600);
+});
+
+// ── ANEL ──────────────────────────────────────────────────────────────
+function drawRing(){
+  const t=todayKey();
+  const f=AREAS.reduce((s,a)=>s+PROMPTS[a.id].filter((_,i)=>entries[t]?.[a.id]?.[i]?.trim()).length,0);
+  const total=AREAS.reduce((s,a)=>s+PROMPTS[a.id].length,0);
+  const pct=Math.round(f/total*100);
+  const circ=2*Math.PI*20;
+  document.getElementById("ring-prog").setAttribute("stroke-dasharray",`${circ*pct/100} ${circ}`);
+  document.getElementById("ring-prog").setAttribute("stroke",pct===100?"#34D399":"#C084FC");
+  document.getElementById("ring-pct").textContent=pct+"%";
+}
+
+// ── SEMANA ────────────────────────────────────────────────────────────
+function buildWeek(){
+  const wk=weekKeys();
+  const md=wk.map(k=>({day:WDAYS[new Date(k+"T12:00:00").getDay()],v:moods[k]!=null?moods[k]:null}));
+  const fd=wk.map(k=>{
+    const f=entries[k]?.financeiro||{};
+    return{day:WDAYS[new Date(k+"T12:00:00").getDay()],saiu:toNum(f[0]),entrou:toNum(f[1])};
+  });
+  const tIn=fd.reduce((s,d)=>s+d.entrou,0);
+  const tOut=fd.reduce((s,d)=>s+d.saiu,0);
+  const saldo=tIn-tOut;
+  const vm=wk.map(k=>moods[k]).filter(x=>x!=null);
+  const avg=vm.length?Math.round(vm.reduce((a,b)=>a+b,0)/vm.length):null;
+  const dIn=wk.filter(k=>entries[k]||moods[k]!=null).length;
+
+  // stats
+  document.getElementById("w-days").innerHTML=`${dIn}<span class="ts">/7</span>`;
+  const wm=document.getElementById("w-mood");
+  wm.textContent=avg!=null?MOODS[avg].e:"—";
+  if(avg!=null)wm.style.color=MOODS[avg].c;
+  const ws=document.getElementById("w-saldo");
+  ws.textContent=(saldo>=0?"+":"")+"R$"+Math.abs(saldo).toFixed(0);
+  ws.style.color=saldo>=0?"#34D399":"#EF4444";
+  document.getElementById("w-sc").style.borderColor=saldo>=0?"#34D39930":"#EF444430";
+  document.getElementById("fi-in").textContent="+R$"+tIn.toFixed(0);
+  document.getElementById("fi-out").textContent="-R$"+tOut.toFixed(0);
+
+  // mood chart
+  if(mChart){mChart.destroy();mChart=null;}
+  const mc=document.getElementById("mood-chart").getContext("2d");
+  const g=mc.createLinearGradient(0,0,0,130);
+  g.addColorStop(0,"#C084FC44");g.addColorStop(1,"#C084FC00");
+  mChart=new Chart(mc,{
+    type:"line",
+    data:{
+      labels:md.map(d=>d.day),
+      datasets:[{
+        data:md.map(d=>d.v),
+        borderColor:"#C084FC",borderWidth:2,
+        pointBackgroundColor:md.map(d=>d.v!=null?MOODS[d.v].c:"transparent"),
+        pointBorderColor:"#08080F",pointBorderWidth:2,pointRadius:5,
+        backgroundColor:g,fill:true,tension:.4,spanGaps:false
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:"#1a1a2a",borderColor:"#2a2a3a",borderWidth:1,titleColor:"#666",bodyColor:"#fff",callbacks:{label:c=>c.raw!=null?MOODS[c.raw].e+" "+MOODS[c.raw].l:""}}},
+      scales:{x:{grid:{display:false},ticks:{color:"#444",font:{size:11}},border:{display:false}},y:{min:0,max:4,grid:{color:"#111120"},ticks:{color:"#444",font:{size:12},callback:v=>MOODS[v]?MOODS[v].e:""},border:{display:false}}}
+    }
+  });
+
+  // fin chart
+  if(fChart){fChart.destroy();fChart=null;}
+  const fc=document.getElementById("fin-chart").getContext("2d");
+  fChart=new Chart(fc,{
+    type:"bar",
+    data:{
+      labels:fd.map(d=>d.day),
+      datasets:[
+        {label:"Entrou",data:fd.map(d=>d.entrou),backgroundColor:"#34D39988",borderRadius:4,borderSkipped:false},
+        {label:"Saiu",  data:fd.map(d=>d.saiu),  backgroundColor:"#EF444488",borderRadius:4,borderSkipped:false}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:"#1a1a2a",borderColor:"#2a2a3a",borderWidth:1,titleColor:"#666",bodyColor:"#fff",callbacks:{label:c=>`${c.dataset.label}: R$${c.raw.toFixed(0)}`}}},
+      scales:{x:{grid:{display:false},ticks:{color:"#444",font:{size:11}},border:{display:false}},y:{grid:{color:"#111120"},ticks:{color:"#444",font:{size:10},callback:v=>"R$"+v},border:{display:false}}}
+    }
+  });
+}
+
+// ── AI ────────────────────────────────────────────────────────────────
+document.getElementById("ai-btn").addEventListener("click",runAI);
+document.getElementById("ai-retry").addEventListener("click",runAI);
+async function runAI(){
+  const wk=weekKeys();
+  const fd=wk.map(k=>{const f=entries[k]?.financeiro||{};return{s:toNum(f[0]),e:toNum(f[1])};});
+  const tIn=fd.reduce((s,d)=>s+d.e,0), tOut=fd.reduce((s,d)=>s+d.s,0);
+  const moodLine=wk.map(k=>moods[k]!=null?MOODS[moods[k]].l:"—").join(", ");
+  const notes=wk.map(k=>{
+    const e=entries[k]||{};
+    return[e.mental?.[1],e.pessoal?.[0],e.familia?.[0]].filter(Boolean).join(" / ");
+  }).filter(Boolean).join(" | ");
+  const prompt=`Você é um coach direto e humano. Com base nessa semana de diário, escreva 3-4 frases: um padrão emocional real, um elogio genuíno e uma ação concreta para a próxima semana.\n\nHumor: ${moodLine}\nFinanceiro: entrou R$${tIn.toFixed(0)}, saiu R$${tOut.toFixed(0)}, saldo R$${(tIn-tOut).toFixed(0)}\nNotas: ${notes||"sem registros"}\n\nResposta em português, sem clichês de coach.`;
+
+  document.getElementById("ai-btn").style.display="none";
+  document.getElementById("ai-text").style.display="none";
+  document.getElementById("ai-retry").style.display="none";
+  document.getElementById("ai-spin-wrap").style.display="flex";
+
+  try{
+    const _k=atob("QVEuQWI4Uk42S3lyU3JvT1Zfc3VsbjVNY01hU2cyc3o4NXNndEt5cmxqUFo3X1oxNGFGQlE=");
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${_k}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+    });
+    const data=await res.json();
+    if(data.error){throw new Error(data.error.message);}
+    const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||"Sem resposta.";
+    document.getElementById("ai-text").textContent=txt;
+    document.getElementById("ai-text").style.display="block";
+    document.getElementById("ai-retry").style.display="inline-block";
+  }catch(err){
+    document.getElementById("ai-text").textContent="Erro: "+err.message;
+    document.getElementById("ai-text").style.display="block";
+    document.getElementById("ai-btn").style.display="inline-block";
+  }
+  document.getElementById("ai-spin-wrap").style.display="none";
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────────────────
+function buildHist(){
+  const list=document.getElementById("hist-list");
+  const empty=document.getElementById("hist-empty");
+  list.innerHTML="";
+
+  // pega TODAS as chaves salvas exceto hoje, mais antigas primeiro
+  const all=Object.keys(entries);
+  const keys=all.sort((a,b)=>b.localeCompare(a));
+
+  if(keys.length===0){
+    empty.textContent="Nenhum registro ainda.\nPreencha o diário hoje e volte amanhã! 📖";
+    empty.style.display="block";
+    return;
+  }
+  empty.style.display="none";
+
+  keys.forEach(k=>{
+    const e=entries[k];
+    const m=moods[k];
+    const filled=AREAS.reduce((s,a)=>s+PROMPTS[a.id].filter((_,i)=>e[a.id]?.[i]?.trim()).length,0);
+    const total=AREAS.reduce((s,a)=>s+PROMPTS[a.id].length,0);
+    const pct=Math.round(filled/total*100);
+
+    const card=document.createElement("div");card.className="hc";
+
+    // topo
+    const top=document.createElement("div");top.className="ht";
+    const left=document.createElement("div");left.className="hl";
+    if(m!=null){const em=document.createElement("span");em.style.fontSize="17px";em.textContent=MOODS[m].e;left.appendChild(em);}
+    const dt=document.createElement("span");dt.className="hdate";dt.textContent=fmtDate(k);left.appendChild(dt);
+    const dow=document.createElement("span");dow.className="hdow";dow.textContent=WDAYS[new Date(k+"T12:00:00").getDay()];left.appendChild(dow);
+    const pEl=document.createElement("span");pEl.className="hpct";pEl.textContent=pct+"%";
+    top.appendChild(left);top.appendChild(pEl);card.appendChild(top);
+
+    // conteúdo por área
+    let hasContent=false;
+    AREAS.forEach(a=>{
+      const snips=PROMPTS[a.id].map((q,i)=>({q,v:e[a.id]?.[i]})).filter(x=>x.v?.trim());
+      if(!snips.length)return;
+      hasContent=true;
+      const aDiv=document.createElement("div");aDiv.className="ha";
+      const lbl=document.createElement("div");lbl.className="halbl";lbl.style.color=a.color;
+      lbl.textContent=a.icon+" "+a.label.toUpperCase();aDiv.appendChild(lbl);
+      snips.forEach(({q,v})=>{
+        const row=document.createElement("div");row.className="hrow";
+        const qq=document.createElement("span");qq.className="hq";qq.textContent=q;
+        const vv=document.createElement("span");vv.className="hv";vv.textContent=v;
+        row.appendChild(qq);row.appendChild(vv);aDiv.appendChild(row);
+      });
+      card.appendChild(aDiv);
+    });
+
+    // se só tem humor mas sem texto
+    if(!hasContent && m!=null){
+      const only=document.createElement("div");
+      only.style.cssText="font-size:12px;color:#444;margin-top:4px";
+      only.textContent="Humor registrado, sem anotações.";
+      card.appendChild(only);
+    }
+
+    list.appendChild(card);
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+drawGrid();
+drawFields();
+drawRing();
+</script>
+</body>
+</html>
